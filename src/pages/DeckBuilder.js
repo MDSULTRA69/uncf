@@ -32,7 +32,7 @@ const cleanDeck = (d) => {
 
 export default function DeckBuilder() {
   const { user, updateUser } = useAuth();
-  const [deck, setDeck] = useState(user?.deck || emptyDeck);
+  const [deck, setDeck] = useState({ ...emptyDeck, ...(user?.deck || {}), ninjutsuGenjutsu: (user?.deck?.ninjutsuGenjutsu || []).filter(m => typeof m === 'object') });
   const [activeTab, setActiveTab] = useState('moves');
   const [loading, setLoading] = useState(false);
 
