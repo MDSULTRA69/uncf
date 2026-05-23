@@ -46,18 +46,7 @@ const saveDeck = async () => {
     toast.error('Failed to save deck');
   } finally { setLoading(false); }
 };
-  const saveDeck = async () => {
-    if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
-    setLoading(true);
-    try {
-      await updateDeck(deck);
-      updateUser({ deck });
-      toast.success('Deck saved!');
-    } catch (err) {
-      toast.error('Failed to save deck');
-    } finally { setLoading(false); }
-  };
-
+  
   const addMove = () => {
     if (deck.ninjutsuGenjutsu.length >= 10) return toast.error('Max 10 Ninjutsu/Genjutsu slots');
     setDeck({ ...deck, ninjutsuGenjutsu: [...deck.ninjutsuGenjutsu, { name: '', class: 'E', type: 'ninjutsu', rank: 1 }] });
