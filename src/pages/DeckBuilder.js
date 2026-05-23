@@ -67,7 +67,10 @@ export default function DeckBuilder() {
     if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
     setLoading(true);
     try {
-      await updateDeck(cleanDeck(deck));
+      const cleaned = cleanDeck(deck);
+      console.log('SENDING:', JSON.stringify(cleaned.ninjutsuGenjutsu));
+      await updateDeck(cleaned);
+      
       updateUser({ deck });
       toast.success('Deck saved!');
     } catch {
