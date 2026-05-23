@@ -24,6 +24,12 @@ const emptyDeck = {
 
 const cleanDeck = (d) => {
   const cleaned = { ...d };
+  cleaned.ninjutsuGenjutsu = (d.ninjutsuGenjutsu || []).map(m => ({
+    name: String(m.name || ''),
+    class: String(m.class || 'E'),
+    type: String(m.type || 'ninjutsu'),
+    rank: Number(m.rank || 1)
+  }));
   if (!cleaned.kkgCard?.name) cleaned.kkgCard = {};
   if (!cleaned.tailedBeast?.name) cleaned.tailedBeast = {};
   if (!cleaned.summoningBeast?.name) cleaned.summoningBeast = {};
