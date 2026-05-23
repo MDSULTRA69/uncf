@@ -110,7 +110,14 @@ export default function Register() {
 
       if (isExisting) {
         payload.rank = rank;
-        payload.compatibleMoves = compatibleMoves.filter(m => m.name.trim());
+        payload.compatibleMoves = compatibleMoves
+  .filter(m => m.name.trim())
+  .map(m => ({
+    name: m.name.trim(),
+    class: m.class,
+    type: m.type,
+    description: m.description || ''
+  }));
         payload.elements = elements;
         payload.deck = deck;
         payload.stats = stats;
