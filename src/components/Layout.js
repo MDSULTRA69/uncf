@@ -3,27 +3,24 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, User, Swords, Trophy, BookOpen,
-  Shield, LogOut, Menu, X, Settings, ChevronRight
+  Shield, LogOut, Menu, X, Settings
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/profile', icon: User, label: 'My Ninja' },
-  { to: '/deck', icon: Shield, label: 'Deck Builder' },
-  { to: '/battle', icon: Swords, label: 'Battle Arena' },
-  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { to: '/rulebook', icon: BookOpen, label: 'Rulebook' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+  { to: '/profile', icon: User, label: 'Ninja' },
+  { to: '/deck', icon: Shield, label: 'Deck' },
+  { to: '/battle', icon: Swords, label: 'Battle' },
+  { to: '/leaderboard', icon: Trophy, label: 'Ranks' },
+  { to: '/rulebook', icon: BookOpen, label: 'Rules' },
 ];
 
 export default function Layout() {
   const { user, logoutUser } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate('/login');
-  };
+  const handleLogout = () => { logoutUser(); navigate('/login'); };
 
   const rankColors = {
     Rookie: '#5a5a7a', Genin: '#3498db', Chunin: '#27ae60',
@@ -32,173 +29,129 @@ export default function Layout() {
   const rankColor = rankColors[user?.rank] || '#5a5a7a';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            zIndex: 40, display: 'none'
-          }}
-          className="mobile-overlay"
-        />
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
-      {/* Sidebar */}
-      <aside style={{
-        width: '240px', minHeight: '100vh',
-        background: 'linear-gradient(180deg, #0d0d1a 0%, #0a0a12 100%)',
-        borderRight: '1px solid #1e1e32',
-        display: 'flex', flexDirection: 'column',
-        position: 'fixed', top: 0, left: 0, zIndex: 50,
-        transform: sidebarOpen ? 'translateX(0)' : undefined,
-        transition: 'transform 0.3s ease'
+      {/* Top Header */}
+      <header style={{
+        height: '52px', background: '#0d0d1a',
+        borderBottom: '1px solid #1e1e32',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 1rem', position: 'sticky', top: 0, zIndex: 50
       }}>
-        {/* Logo */}
-        <div style={{ padding: '1.5rem 1.25rem', borderBottom: '1px solid #1e1e32' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <div style={{
-            fontFamily: 'Cinzel Decorative, serif',
-            fontSize: '1.4rem',
-            color: '#e2b96f',
-            letterSpacing: '0.1em',
-            textShadow: '0 0 20px rgba(226,185,111,0.4)'
-          }}>UNC</div>
-          <div style={{ fontSize: '0.65rem', color: '#5a5a7a', letterSpacing: '0.2em', marginTop: '2px' }}>
-            ULTIMATE NINJA CHAMPIONSHIP
+            width: '30px', height: '30px', borderRadius: '50%',
+            background: `linear-gradient(135deg, ${rankColor}44, ${rankColor}22)`,
+            border: `2px solid ${rankColor}88`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.7rem', fontFamily: 'Cinzel, serif', color: rankColor
+          }}>
+            {user?.characterName?.[0]?.toUpperCase() || '?'}
           </div>
-        </div>
-
-        {/* Player mini-card */}
-        <div style={{
-          margin: '1rem',
-          padding: '0.875rem',
-          background: '#12121e',
-          borderRadius: '6px',
-          border: `1px solid ${rankColor}44`
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: `linear-gradient(135deg, ${rankColor}44, ${rankColor}22)`,
-              border: `2px solid ${rankColor}88`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.75rem', fontFamily: 'Cinzel, serif', color: rankColor
-            }}>
-              {user?.characterName?.[0]?.toUpperCase() || '?'}
+          <div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e8e0d0', lineHeight: 1 }}>
+              {user?.characterName}
             </div>
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e8e0d0' }}>
-                {user?.characterName}
-              </div>
-              <div style={{ fontSize: '0.7rem', color: rankColor, fontFamily: 'Cinzel, serif' }}>
-                {user?.rank} · {user?.clan}
-              </div>
-            </div>
-          </div>
-          <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem' }}>
-            <div style={{ flex: 1, textAlign: 'center', fontSize: '0.65rem', color: '#9090a8' }}>
-              <div style={{ color: '#e2b96f', fontWeight: 700 }}>{user?.stats?.points || 0}</div>
-              PTS
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', fontSize: '0.65rem', color: '#9090a8' }}>
-              <div style={{ color: '#27ae60', fontWeight: 700 }}>{user?.stats?.wins || 0}</div>
-              WINS
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', fontSize: '0.65rem', color: '#9090a8' }}>
-              <div style={{ color: '#e74c3c', fontWeight: 700 }}>{user?.stats?.losses || 0}</div>
-              LOSS
+            <div style={{ fontSize: '0.6rem', color: rankColor, fontFamily: 'Cinzel, serif' }}>
+              {user?.rank} · {user?.clan}
             </div>
           </div>
         </div>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={() => setSidebarOpen(false)}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.65rem 0.875rem', borderRadius: '5px',
-                fontFamily: 'Cinzel, serif', fontSize: '0.78rem', letterSpacing: '0.06em',
-                transition: 'all 0.2s',
-                textDecoration: 'none',
-                background: isActive ? 'rgba(226,185,111,0.1)' : 'transparent',
-                color: isActive ? '#e2b96f' : '#9090a8',
-                borderLeft: isActive ? '2px solid #e2b96f' : '2px solid transparent',
-              })}
-            >
-              <Icon size={16} />
-              {label}
-            </NavLink>
-          ))}
+        <div style={{ fontFamily: 'Cinzel Decorative, serif', fontSize: '1.1rem', color: '#e2b96f' }}>
+          UNC
+        </div>
 
-          {['npc', 'kage'].includes(user?.role) && (
-            <NavLink
-              to="/admin"
-              onClick={() => setSidebarOpen(false)}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.65rem 0.875rem', borderRadius: '5px',
-                fontFamily: 'Cinzel, serif', fontSize: '0.78rem', letterSpacing: '0.06em',
-                transition: 'all 0.2s', textDecoration: 'none', marginTop: '0.5rem',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.65rem', color: '#9090a8' }}>
+              XP <span style={{ color: '#e2b96f' }}>{user?.stats?.xp?.toLocaleString() || 0}</span>
+            </div>
+            <div style={{ fontSize: '0.65rem', color: '#9090a8' }}>
+              XC <span style={{ color: '#4ecdc4' }}>{user?.stats?.xc?.toLocaleString() || 0}</span>
+            </div>
+          </div>
+          <button onClick={() => setMenuOpen(true)} style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: '#9090a8', padding: '4px'
+          }}>
+            <Menu size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Slide-out menu */}
+      {menuOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+          <div onClick={() => setMenuOpen(false)} style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)'
+          }} />
+          <div style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: '220px',
+            background: '#0d0d1a', borderLeft: '1px solid #2a2a3e',
+            display: 'flex', flexDirection: 'column', padding: '1rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <span style={{ fontFamily: 'Cinzel, serif', color: '#e2b96f', fontSize: '0.8rem' }}>MENU</span>
+              <button onClick={() => setMenuOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9090a8' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.5rem', letterSpacing: '0.1em' }}>
+              {user?.village?.toUpperCase()} · {user?.stats?.wins || 0}W {user?.stats?.losses || 0}L
+            </div>
+            <div style={{ height: '1px', background: '#1e1e32', marginBottom: '1rem' }} />
+
+            {['npc', 'kage'].includes(user?.role) && (
+              <NavLink to="/admin" onClick={() => setMenuOpen(false)} style={({ isActive }) => ({
+                display: 'flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.6rem 0.75rem', borderRadius: '5px', marginBottom: '0.5rem',
+                textDecoration: 'none', fontSize: '0.8rem', fontFamily: 'Cinzel, serif',
                 background: isActive ? 'rgba(192,57,43,0.1)' : 'transparent',
                 color: isActive ? '#e74c3c' : '#9090a8',
-                borderLeft: isActive ? '2px solid #e74c3c' : '2px solid transparent',
-              })}
-            >
-              <Settings size={16} />
-              Admin Panel
-            </NavLink>
-          )}
-        </nav>
+              })}>
+                <Settings size={15} /> Admin Panel
+              </NavLink>
+            )}
 
-        {/* Village & Logout */}
-        <div style={{ padding: '1rem', borderTop: '1px solid #1e1e32' }}>
-          <div style={{ fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>
-            VILLAGE: <span style={{ color: '#9090a8' }}>{user?.village}</span>
+            <div style={{ flex: 1 }} />
+            <button onClick={handleLogout} style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              background: 'none', border: '1px solid #2a2a3e', borderRadius: '5px',
+              padding: '0.6rem 0.75rem', cursor: 'pointer', color: '#9090a8',
+              fontFamily: 'Cinzel, serif', fontSize: '0.75rem', width: '100%'
+            }}>
+              <LogOut size={14} /> Log Out
+            </button>
           </div>
-          <button onClick={handleLogout} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
-            <LogOut size={14} />
-            Log Out
-          </button>
         </div>
-      </aside>
+      )}
 
       {/* Main content */}
-      <div style={{ marginLeft: '240px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Top bar */}
-        <header style={{
-          height: '56px', background: '#0a0a12',
-          borderBottom: '1px solid #1e1e32',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 1.5rem', position: 'sticky', top: 0, zIndex: 30
-        }}>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="btn btn-ghost btn-sm" style={{ display: 'none' }}>
-            <Menu size={18} />
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ChevronRight size={14} style={{ color: '#5a5a7a' }} />
-            <span style={{ fontSize: '0.75rem', color: '#5a5a7a', letterSpacing: '0.1em', fontFamily: 'Cinzel, serif' }}>
-              {user?.village?.toUpperCase()}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#9090a8' }}>
-              XP: <span style={{ color: '#e2b96f' }}>{user?.stats?.xp?.toLocaleString() || 0}</span>
-            </span>
-            <span style={{ fontSize: '0.75rem', color: '#9090a8', marginLeft: '0.75rem' }}>
-              XC: <span style={{ color: '#4ecdc4' }}>{user?.stats?.xc?.toLocaleString() || 0}</span>
-            </span>
-          </div>
-        </header>
+      <main style={{ flex: 1, padding: '1rem', paddingBottom: '70px', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+        <Outlet />
+      </main>
 
-        <main style={{ flex: 1, padding: '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-          <Outlet />
-        </main>
-      </div>
+      {/* Bottom Nav Bar */}
+      <nav style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+        background: '#0d0d1a', borderTop: '1px solid #1e1e32',
+        display: 'flex', height: '58px'
+      }}>
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <NavLink key={to} to={to} style={({ isActive }) => ({
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', gap: '2px', textDecoration: 'none',
+            color: isActive ? '#e2b96f' : '#5a5a7a',
+            borderTop: isActive ? '2px solid #e2b96f' : '2px solid transparent',
+            fontSize: '0.55rem', fontFamily: 'Cinzel, serif', letterSpacing: '0.05em',
+            transition: 'all 0.2s'
+          })}>
+            <Icon size={18} />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
