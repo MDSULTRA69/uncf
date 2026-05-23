@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+// ============================================================
+// src/pages/DeckBuilder.js  (UPDATED — private deck code section)
+// New: "Lock & Generate Code" button below the save button.
+// Shows the generated code and active codes list.
+// ============================================================
+
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { updateDeck } from '../utils/api';
-import { Save, Plus, Trash2, Info } from 'lucide-react';
+import { updateDeck, generateDeckCode, getMyDeckCodes } from '../utils/api';
+import { Save, Plus, Trash2, Info, Lock, Copy, CheckCircle } from 'lucide-react';
 
 const MOVE_CLASSES = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
 
@@ -30,10 +36,32 @@ export default function DeckBuilder() {
   const [activeTab, setActiveTab] = useState('moves');
   const [loading, setLoading] = useState(false);
 
+  // ── Deck code state ──────────────────────────────────────
+  const [generating, setGenerating] = useState(false);
+  const [codeLabel, setCodeLabel] = useState('');
+  const [generatedCode, setGeneratedCode] = useState(null);
+  const [myCodes, setMyCodes] = useState([]);
+  const [codesLoading, setCodesLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showCodePanel, setShowCodePanel] = useState(false);
+
   const totalCards = (deck.ninjutsuGenjutsu?.length || 0) + (deck.skills?.length || 0) +
     (deck.weaponBag?.length > 0 ? 1 : 0) + (deck.kkgCard?.name ? 1 : 0) +
     (deck.basicEssentials?.class ? 1 : 0) + (deck.tailedBeast?.name ? 1 : 0) +
     (deck.summoningBeast?.name ? 1 : 0);
+
+  useEffect(() => {
+    if (showCodePanel) fetchMyCodes();
+  }, [showCodePanel]);
+
+  const fetchMyCodes = async () => {
+    setCodesLoading(true);
+    try {
+      const { data } = await getMyDeckCodes();
+      setMyCodes(data.codes || []);
+    } catch { /* ignore */ }
+    finally { setCodesLoading(false); }
+  };
 
   const saveDeck = async () => {
     if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
@@ -42,10 +70,38 @@ export default function DeckBuilder() {
       await updateDeck(cleanDeck(deck));
       updateUser({ deck });
       toast.success('Deck saved!');
-    } catch (err) {
+    } catch {
       toast.error('Failed to save deck');
     } finally { setLoading(false); }
   };
+
+  const handleGenerateCode = async () => {
+    // Must save first so the server has the latest deck
+    if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
+    setGenerating(true);
+    try {
+      // Always save first to ensure server deck is up-to-date
+      await updateDeck(cleanDeck(deck));
+      updateUser({ deck });
+
+      const { data } = await generateDeckCode(codeLabel.trim());
+      setGeneratedCode(data);
+      setCodeLabel('');
+      toast.success(`Deck locked! Code: ${data.code}`);
+      fetchMyCodes();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to generate code');
+    } finally { setGenerating(false); }
+  };
+
+  const copyCode = (code) => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // ── Deck editing helpers ─────────────────────────────────
 
   const addMove = () => {
     if (deck.ninjutsuGenjutsu.length >= 10) return toast.error('Max 10 Ninjutsu/Genjutsu slots');
@@ -91,6 +147,7 @@ export default function DeckBuilder() {
 
   return (
     <div className="fade-in">
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
@@ -110,6 +167,144 @@ export default function DeckBuilder() {
             <Save size={14} /> {loading ? '...' : 'Save'}
           </button>
         </div>
+      </div>
+
+      {/* ── LOCK & GENERATE CODE PANEL ── */}
+      <div style={{
+        background: showCodePanel ? 'rgba(226,185,111,0.05)' : 'transparent',
+        border: `1px solid ${showCodePanel ? '#e2b96f44' : '#1e1e32'}`,
+        borderRadius: '8px', marginBottom: '1rem', overflow: 'hidden',
+        transition: 'all 0.2s'
+      }}>
+        {/* Toggle header */}
+        <button
+          onClick={() => setShowCodePanel(!showCodePanel)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0.75rem 1rem', background: 'transparent', border: 'none', cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Lock size={14} style={{ color: '#e2b96f' }} />
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.75rem', color: '#e2b96f', letterSpacing: '0.08em' }}>
+              LOCK & GENERATE CODE
+            </span>
+          </div>
+          <span style={{ color: '#5a5a7a', fontSize: '0.7rem' }}>{showCodePanel ? '▲' : '▼'}</span>
+        </button>
+
+        {showCodePanel && (
+          <div style={{ padding: '0 1rem 1rem' }}>
+            {/* Explanation */}
+            <div style={{ background: 'rgba(78,205,196,0.05)', border: '1px solid #4ecdc422', borderRadius: '5px', padding: '0.6rem 0.75rem', marginBottom: '0.875rem', display: 'flex', gap: '0.4rem' }}>
+              <Info size={13} style={{ color: '#4ecdc4', marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ fontSize: '0.7rem', color: '#9090a8' }}>
+                Lock your current deck and receive a short code (e.g. <strong style={{ color: '#e2b96f' }}>UNC-A3F9K2</strong>). Post the code in the battle channel — your opponent sees only the code, never your cards. The AI MOD decodes it server-side and will call out any card you use that wasn't in your locked deck.
+              </div>
+            </div>
+
+            {/* Label input */}
+            <div className="form-group" style={{ marginBottom: '0.6rem' }}>
+              <label>Label (optional)</label>
+              <input
+                className="input"
+                value={codeLabel}
+                onChange={e => setCodeLabel(e.target.value)}
+                placeholder='e.g. "Kage tournament deck"'
+                maxLength={80}
+              />
+            </div>
+
+            {/* Generate button */}
+            <button
+              className="btn btn-gold"
+              onClick={handleGenerateCode}
+              disabled={generating || totalCards === 0}
+              style={{ width: '100%', justifyContent: 'center', marginBottom: '0.875rem' }}
+            >
+              <Lock size={14} />
+              {generating ? 'Locking deck...' : 'Lock & Generate Code'}
+            </button>
+
+            {/* Show the generated code */}
+            {generatedCode && (
+              <div style={{
+                background: '#0a0a12', border: '2px solid #e2b96f55', borderRadius: '8px',
+                padding: '1rem', marginBottom: '0.875rem', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.65rem', color: '#5a5a7a', fontFamily: 'Cinzel, serif', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>
+                  YOUR DECK CODE
+                </div>
+                <div style={{
+                  fontFamily: 'Cinzel Decorative, serif', fontSize: '1.5rem',
+                  color: '#e2b96f', letterSpacing: '0.15em', marginBottom: '0.5rem',
+                  textShadow: '0 0 20px rgba(226,185,111,0.4)'
+                }}>
+                  {generatedCode.code}
+                </div>
+                {generatedCode.label && (
+                  <div style={{ fontSize: '0.7rem', color: '#9090a8', marginBottom: '0.4rem' }}>
+                    "{generatedCode.label}"
+                  </div>
+                )}
+                <div style={{ fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.75rem' }}>
+                  Expires {new Date(generatedCode.expiresAt).toLocaleDateString()}
+                </div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => copyCode(generatedCode.code)}
+                  style={{ justifyContent: 'center', width: '100%' }}
+                >
+                  {copied ? <CheckCircle size={13} style={{ color: '#27ae60' }} /> : <Copy size={13} />}
+                  {copied ? 'Copied!' : 'Copy Code'}
+                </button>
+              </div>
+            )}
+
+            {/* Active codes list */}
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.65rem', color: '#5a5a7a', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+              MY ACTIVE CODES
+            </div>
+            {codesLoading ? (
+              <div style={{ textAlign: 'center', color: '#5a5a7a', fontSize: '0.75rem', padding: '0.75rem' }}>Loading...</div>
+            ) : myCodes.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#3a3a5e', fontSize: '0.75rem', padding: '0.75rem' }}>No active codes</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {myCodes.map(c => (
+                  <div key={c.code} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    background: '#0a0a12', border: '1px solid #1e1e32', borderRadius: '5px',
+                    padding: '0.5rem 0.65rem'
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.82rem', color: '#e2b96f', letterSpacing: '0.08em' }}>
+                        {c.code}
+                      </div>
+                      {c.label && (
+                        <div style={{ fontSize: '0.62rem', color: '#9090a8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{c.label}"
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.58rem', color: '#3a3a5e', marginTop: '2px' }}>
+                        {c.usedInBattle
+                          ? `Used in battle vs ${c.usedInBattle.vs}`
+                          : `Expires ${new Date(c.expiresAt).toLocaleDateString()}`}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => copyCode(c.code)}
+                      style={{ padding: '0.25rem 0.5rem', flexShrink: 0 }}
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
