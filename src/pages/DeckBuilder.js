@@ -27,7 +27,25 @@ export default function DeckBuilder() {
     (deck.weaponBag?.length > 0 ? 1 : 0) + (deck.kkgCard?.name ? 1 : 0) +
     (deck.basicEssentials?.class ? 1 : 0) + (deck.tailedBeast?.name ? 1 : 0) +
     (deck.summoningBeast?.name ? 1 : 0);
+const cleanDeck = (d) => {
+  const cleaned = { ...d };
+  if (!cleaned.kkgCard?.name) cleaned.kkgCard = {};
+  if (!cleaned.tailedBeast?.name) cleaned.tailedBeast = {};
+  if (!cleaned.summoningBeast?.name) cleaned.summoningBeast = {};
+  return cleaned;
+};
 
+const saveDeck = async () => {
+  if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
+  setLoading(true);
+  try {
+    await updateDeck(cleanDeck(deck));
+    updateUser({ deck });
+    toast.success('Deck saved!');
+  } catch (err) {
+    toast.error('Failed to save deck');
+  } finally { setLoading(false); }
+};
   const saveDeck = async () => {
     if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
     setLoading(true);
