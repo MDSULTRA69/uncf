@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { getBattle, submitAction, askMod, spinWheel, forfeitBattle, submitPrivateDeck } from '../utils/api';
+import { getBattle, submitAction, askMod, spinWheel, forfeitBattle, submitPrivateDeck, submitPrivateTraps, getMe } from '../utils/api';
 import { Send, RefreshCw, HelpCircle, Flag, Coins, Shuffle, Lock, CheckCircle } from 'lucide-react';
 
 const classColor = { E: '#5a5a7a', D: '#3498db', C: '#27ae60', B: '#9b59b6', A: '#e2b96f', S: '#e74c3c', SS: '#f39c12', SSS: '#ff6b6b' };
