@@ -108,16 +108,7 @@ const handleSubmitDeck = async () => {
     setSubmittingDeck(false);
   }
 };
-    try {
-      await submitPrivateDeck(id, deckToSubmit);
-      setDeckSubmitted(true);
-      toast.success('Deck submitted privately! Your opponent cannot see your cards.');
-      fetchBattle();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to submit deck');
-    } finally { setSubmittingDeck(false); }
-  };
-
+    
   const handleAskMod = async () => {
     if (!modQuestion.trim()) return;
     try {
