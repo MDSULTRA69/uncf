@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { getBattle, submitAction, askMod, spinWheel, forfeitBattle } from '../utils/api';
-import { Send, RefreshCw, HelpCircle, Flag, Coins, Shuffle } from 'lucide-react';
+import { getBattle, submitAction, askMod, spinWheel, forfeitBattle, submitPrivateDeck } from '../utils/api';
+import { Send, RefreshCw, HelpCircle, Flag, Coins, Shuffle, Lock, CheckCircle } from 'lucide-react';
 
 const classColor = { E: '#5a5a7a', D: '#3498db', C: '#27ae60', B: '#9b59b6', A: '#e2b96f', S: '#e74c3c', SS: '#f39c12', SSS: '#ff6b6b' };
 const phaseColor = { attack: '#e74c3c', response: '#3498db', trap: '#9b59b6', counter: '#f39c12' };
@@ -23,6 +23,8 @@ export default function BattleView() {
   const [showModAsk, setShowModAsk] = useState(false);
   const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState('log');
+  const [submittingDeck, setSubmittingDeck] = useState(false);
+  const [deckSubmitted, setDeckSubmitted] = useState(false);
   const chatEndRef = useRef(null);
 
   const fetchBattle = async () => {
@@ -39,7 +41,6 @@ export default function BattleView() {
   useEffect(() => {
     if (activeTab === 'log') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [battle?.chatLog, activeTab]);
-
   useEffect(() => {
     if (battle?.status !== 'active') return;
     const interval = setInterval(fetchBattle, 8000);
@@ -54,6 +55,8 @@ export default function BattleView() {
   const isParticipant = isPlayer1 || isPlayer2;
   const isMyTurn = battle.whoseTurn === user?.id || battle.whoseTurn?._id === user?.id || battle.whoseTurn?.toString() === user?.id;
   const myDeck = isPlayer1 ? battle.player1Deck : battle.player2Deck;
+  const myDeckSubmitted = isPlayer1 ? battle.player1DeckSubmitted : battle.player2DeckSubmitted;
+  const oppDeckSubmitted = isPlayer1 ? battle.player2DeckSubmitted : battle.player1DeckSubmitted;
 
   const toggleCard = (card) => {
     if (selectedCards.find(c => c.name === card.name)) {
@@ -79,6 +82,19 @@ export default function BattleView() {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to submit');
     } finally { setSending(false); }
+  };
+
+  const handleSubmitDeck = async () => {
+    if (!user?.deck) return toast.error('No deck found. Build your deck first in the Deck Builder.');
+    setSubmittingDeck(true);
+    try {
+      await submitPrivateDeck(id, user.deck);
+      setDeckSubmitted(true);
+      toast.success('Deck submitted privately! Your opponent cannot see your cards.');
+      fetchBattle();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit deck');
+    } finally { setSubmittingDeck(false); }
   };
 
   const handleAskMod = async () => {
@@ -122,7 +138,6 @@ export default function BattleView() {
       {/* HP Bar Header */}
       <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', padding: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          {/* P1 */}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '0.72rem', color: '#e2b96f', fontFamily: 'Cinzel, serif', marginBottom: '2px' }}>{battle.player1Name}</div>
             <div className="hp-bar-container">
@@ -130,8 +145,6 @@ export default function BattleView() {
             </div>
             <div style={{ fontSize: '0.6rem', color: '#5a5a7a', marginTop: '2px' }}>{battle.player1HP}/100</div>
           </div>
-
-          {/* Center */}
           <div style={{ textAlign: 'center', minWidth: '60px' }}>
             <div style={{ fontSize: '0.65rem', fontFamily: 'Cinzel, serif', color: '#5a5a7a' }}>T{battle.currentTurn}/{battle.maxTurns}</div>
             <div style={{
@@ -144,8 +157,6 @@ export default function BattleView() {
               {battle.phase?.toUpperCase()}
             </div>
           </div>
-
-          {/* P2 */}
           <div style={{ flex: 1, textAlign: 'right' }}>
             <div style={{ fontSize: '0.72rem', color: '#e74c3c', fontFamily: 'Cinzel, serif', marginBottom: '2px' }}>{battle.player2Name}</div>
             <div className="hp-bar-container">
@@ -154,8 +165,6 @@ export default function BattleView() {
             <div style={{ fontSize: '0.6rem', color: '#5a5a7a', marginTop: '2px' }}>{battle.player2HP}/100</div>
           </div>
         </div>
-
-        {/* Turn indicator */}
         <div style={{ textAlign: 'center', fontSize: '0.65rem', fontFamily: 'Cinzel, serif', color: isMyTurn ? '#27ae60' : '#5a5a7a' }}>
           {isMyTurn ? '● YOUR TURN' : `● Waiting for ${isPlayer1 ? battle.player2Name : battle.player1Name}...`}
         </div>
@@ -178,7 +187,6 @@ export default function BattleView() {
       {/* BATTLE LOG TAB */}
       {activeTab === 'log' && (
         <div style={{ display: 'flex', flexDirection: 'column', background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', overflow: 'hidden' }}>
-          {/* Log header */}
           <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #1e1e32', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>BATTLE LOG</span>
             <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -196,7 +204,6 @@ export default function BattleView() {
             </div>
           </div>
 
-          {/* Ask MOD */}
           {showModAsk && (
             <div style={{ padding: '0.6rem', background: 'rgba(226,185,111,0.05)', borderBottom: '1px solid #2a2a3e', display: 'flex', gap: '0.4rem' }}>
               <input className="input" style={{ flex: 1, padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
@@ -207,7 +214,6 @@ export default function BattleView() {
             </div>
           )}
 
-          {/* Forfeit confirm */}
           {showForfeitConfirm && (
             <div style={{ padding: '0.6rem', background: 'rgba(192,57,43,0.1)', borderBottom: '1px solid #e74c3c44', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.78rem', color: '#e8e0d0', flex: 1 }}>Forfeit? You lose 3 points.</span>
@@ -216,7 +222,6 @@ export default function BattleView() {
             </div>
           )}
 
-          {/* Spin result */}
           {spinResult && (
             <div style={{ padding: '0.6rem 0.75rem', background: 'rgba(78,205,196,0.05)', borderBottom: '1px solid #2a2a3e' }}>
               <div style={{ fontSize: '0.65rem', color: '#4ecdc4', fontFamily: 'Cinzel, serif', marginBottom: '0.25rem' }}>MOD RESULT</div>
@@ -225,7 +230,6 @@ export default function BattleView() {
             </div>
           )}
 
-          {/* Messages */}
           <div style={{ overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '40vh' }}>
             {battle.chatLog?.map((msg, i) => (
               <div key={i}>
@@ -242,7 +246,6 @@ export default function BattleView() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
           {isParticipant && battle.status === 'active' && isMyTurn && (
             <div style={{ padding: '0.6rem', borderTop: '1px solid #1e1e32' }}>
               {selectedCards.length > 0 && (
@@ -268,7 +271,6 @@ export default function BattleView() {
             </div>
           )}
 
-          {/* Battle complete */}
           {battle.status === 'completed' && (
             <div style={{ padding: '1rem', borderTop: '1px solid #1e1e32', textAlign: 'center' }}>
               <div style={{ fontFamily: 'Cinzel Decorative, serif', fontSize: '1rem', color: '#e2b96f', marginBottom: '0.4rem' }}>
@@ -284,14 +286,58 @@ export default function BattleView() {
       {/* DECK TAB */}
       {activeTab === 'deck' && isParticipant && (
         <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', overflow: 'hidden' }}>
+
+          {/* Private deck submission */}
+          <div style={{ padding: '0.75rem', borderBottom: '1px solid #1e1e32', background: 'rgba(226,185,111,0.03)' }}>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f', marginBottom: '0.5rem' }}>
+              🔒 PRIVATE DECK SUBMISSION
+            </div>
+
+            {/* Submission status */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
+              <div style={{ flex: 1, padding: '0.35rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Cinzel, serif', textAlign: 'center',
+                background: (myDeckSubmitted || deckSubmitted) ? 'rgba(39,174,96,0.1)' : 'rgba(90,90,122,0.1)',
+                border: `1px solid ${(myDeckSubmitted || deckSubmitted) ? '#27ae6044' : '#1e1e32'}`,
+                color: (myDeckSubmitted || deckSubmitted) ? '#27ae60' : '#5a5a7a'
+              }}>
+                You: {(myDeckSubmitted || deckSubmitted) ? '✓ Submitted' : 'Not submitted'}
+              </div>
+              <div style={{ flex: 1, padding: '0.35rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Cinzel, serif', textAlign: 'center',
+                background: oppDeckSubmitted ? 'rgba(39,174,96,0.1)' : 'rgba(90,90,122,0.1)',
+                border: `1px solid ${oppDeckSubmitted ? '#27ae6044' : '#1e1e32'}`,
+                color: oppDeckSubmitted ? '#27ae60' : '#5a5a7a'
+              }}>
+                Opponent: {oppDeckSubmitted ? '✓ Submitted' : 'Not yet'}
+              </div>
+            </div>
+
+            {!(myDeckSubmitted || deckSubmitted) ? (
+              <button
+                className="btn btn-gold"
+                onClick={handleSubmitDeck}
+                disabled={submittingDeck}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                <Lock size={13} />
+                {submittingDeck ? 'Submitting...' : 'Submit My Deck Privately'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', fontSize: '0.72rem', color: '#27ae60' }}>
+                <CheckCircle size={13} />
+                Deck submitted. Opponent cannot see your cards.
+              </div>
+            )}
+          </div>
+
+          {/* Card list */}
           <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #1e1e32', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>MY DECK</span>
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>MY CARDS</span>
             {isMyTurn && <span style={{ fontSize: '0.65rem', color: '#27ae60' }}>● Your Turn — tap to select</span>}
           </div>
-          <div style={{ padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '50vh', overflowY: 'auto' }}>
+          <div style={{ padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '40vh', overflowY: 'auto' }}>
             {allMyCards.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#5a5a7a', padding: '2rem', fontSize: '0.8rem' }}>
-                No cards. Build your deck first!
+                No cards. Build your deck first in the Deck Builder!
               </div>
             ) : allMyCards.map((card, i) => {
               const isSelected = selectedCards.find(c => c.name === card.name);
@@ -316,7 +362,7 @@ export default function BattleView() {
             })}
           </div>
           <div style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid #1e1e32', fontSize: '0.62rem', color: '#5a5a7a', textAlign: 'center' }}>
-            {selectedCards.length}/5 selected · go to LOG tab to submit
+            {selectedCards.length}/5 selected · go to LOG tab to submit action
           </div>
         </div>
       )}
@@ -325,7 +371,6 @@ export default function BattleView() {
       {activeTab === 'tools' && (
         <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>MOD TOOLS</div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {[
               { type: 'compatibility', label: 'Compatibility Test', icon: Coins, desc: 'Coin toss for move compat' },
@@ -340,10 +385,7 @@ export default function BattleView() {
               </button>
             ))}
           </div>
-
           <div className="gold-divider" />
-
-          {/* Hit reference */}
           <div>
             <div style={{ fontSize: '0.65rem', color: '#5a5a7a', fontFamily: 'Cinzel, serif', marginBottom: '0.4rem' }}>HIT VALUES</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.2rem' }}>
@@ -355,10 +397,7 @@ export default function BattleView() {
               ))}
             </div>
           </div>
-
           <div className="gold-divider" />
-
-          {/* Active traps & cooldowns */}
           <div>
             <div style={{ fontSize: '0.65rem', color: '#5a5a7a', fontFamily: 'Cinzel, serif', marginBottom: '0.3rem' }}>ACTIVE TRAPS</div>
             {battle.activeTraps?.length > 0
