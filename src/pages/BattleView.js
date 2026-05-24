@@ -84,7 +84,6 @@ export default function BattleView() {
     } finally { setSending(false); }
   };
 const handleSubmitDeck = async () => {
-const handleSubmitDeck = async () => {
   setSubmittingDeck(true);
   try {
     const { data } = await getMe();
