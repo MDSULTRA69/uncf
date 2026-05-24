@@ -83,12 +83,16 @@ export default function BattleView() {
       toast.error(err.response?.data?.error || 'Failed to submit');
     } finally { setSending(false); }
   };
-
-  const handleSubmitDeck = async () => {
-    if (!user?.deck) return toast.error('No deck found. Build your deck first in the Deck Builder.');
+const handleSubmitDeck = async () => {
+  const deckToSubmit = user?.deck;
+  if (!deckToSubmit || (
+    !deckToSubmit.ninjutsuGenjutsu?.length &&
+    !deckToSubmit.skills?.length &&
+    !deckToSubmit.weaponBag?.length
+  )) return toast.error('Your deck is empty. Build and save your deck first.');
     setSubmittingDeck(true);
     try {
-      await submitPrivateDeck(id, user.deck);
+      await submitPrivateDeck(id, deckToSubmit);
       setDeckSubmitted(true);
       toast.success('Deck submitted privately! Your opponent cannot see your cards.');
       fetchBattle();
