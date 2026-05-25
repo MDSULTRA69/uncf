@@ -50,10 +50,6 @@ export const forfeitBattle    = (id)           => api.post(`/battles/${id}/forfe
 export const submitPrivateDeck = (battleId, deck) =>
   api.post(`/battles/${battleId}/submit-deck`, { deck });
 
-// Private traps submission — hidden from opponent until triggered
-export const submitPrivateTraps = (battleId, traps) =>
-  api.post(`/battles/${battleId}/submit-traps`, { traps });
-
 // ── GAME DATA ─────────────────────────────────────────────────
 export const getMoves    = (params) => api.get('/game-data/moves', { params });
 export const getClans    = ()       => api.get('/game-data/clans');

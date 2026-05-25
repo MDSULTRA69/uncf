@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -25,9 +25,12 @@ export default function BattleView() {
   const [activeTab, setActiveTab] = useState('log');
   const [submittingDeck, setSubmittingDeck] = useState(false);
   const [deckSubmitted, setDeckSubmitted] = useState(false);
+  const [trapSlots, setTrapSlots] = useState([{ name: '', class: 'D' }, { name: '', class: 'D' }, { name: '', class: 'D' }]);
+  const [submittingTraps, setSubmittingTraps] = useState(false);
+  const [trapsSubmitted, setTrapsSubmitted] = useState(false);
   const chatEndRef = useRef(null);
 
-  const fetchBattle = async () => {
+  const fetchBattle = useCallback(async () => {
     try {
       const { data } = await getBattle(id);
       setBattle(data.battle);
@@ -35,9 +38,9 @@ export default function BattleView() {
       toast.error('Battle not found');
       navigate('/battle');
     } finally { setLoading(false); }
-  };
+  }, [id, navigate]);
 
-  useEffect(() => { fetchBattle(); }, [id]);
+  useEffect(() => { fetchBattle(); }, [fetchBattle]);
   useEffect(() => {
     if (activeTab === 'log') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [battle?.chatLog, activeTab]);
@@ -45,7 +48,7 @@ export default function BattleView() {
     if (battle?.status !== 'active') return;
     const interval = setInterval(fetchBattle, 8000);
     return () => clearInterval(interval);
-  }, [battle?.status]);
+  }, [battle?.status, fetchBattle]);
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
   if (!battle) return null;
@@ -108,6 +111,21 @@ const handleSubmitDeck = async () => {
     setSubmittingDeck(false);
   }
 };
+
+  const handleSubmitTraps = async () => {
+    const filledTraps = trapSlots.filter(t => t.name.trim());
+    setSubmittingTraps(true);
+    try {
+      await submitPrivateTraps(id, filledTraps);
+      setTrapsSubmitted(true);
+      toast.success(`${filledTraps.length} trap(s) submitted privately!`);
+      fetchBattle();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit traps');
+    } finally {
+      setSubmittingTraps(false);
+    }
+  };
     
   const handleAskMod = async () => {
     if (!modQuestion.trim()) return;
@@ -184,14 +202,14 @@ const handleSubmitDeck = async () => {
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: '#12121e', borderRadius: '6px', border: '1px solid #1e1e32', padding: '3px', gap: '3px' }}>
-        {['log', 'deck', 'tools'].map(tab => (
+        {['log', 'deck', 'traps', 'tools'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             flex: 1, padding: '0.4rem', borderRadius: '4px', border: 'none', cursor: 'pointer',
             fontFamily: 'Cinzel, serif', fontSize: '0.68rem', letterSpacing: '0.05em',
             background: activeTab === tab ? 'rgba(226,185,111,0.1)' : 'transparent',
             color: activeTab === tab ? '#e2b96f' : '#5a5a7a'
           }}>
-            {tab === 'log' ? 'BATTLE LOG' : tab === 'deck' ? 'DECK' : 'TOOLS'}
+            {tab === 'log' ? 'BATTLE LOG' : tab === 'deck' ? 'DECK' : tab === 'traps' ? 'TRAPS' : 'TOOLS'}
           </button>
         ))}
       </div>
@@ -376,6 +394,47 @@ const handleSubmitDeck = async () => {
           <div style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid #1e1e32', fontSize: '0.62rem', color: '#5a5a7a', textAlign: 'center' }}>
             {selectedCards.length}/5 selected · go to LOG tab to submit action
           </div>
+        </div>
+      )}
+
+      {/* TRAPS TAB */}
+      {activeTab === 'traps' && isParticipant && (
+        <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#9b59b6' }}>🪤 PRIVATE TRAPS (max 3)</div>
+          <div style={{ fontSize: '0.68rem', color: '#5a5a7a' }}>Submit before your first action. Opponent cannot see your traps.</div>
+          {trapSlots.map((trap, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.65rem', color: '#5a5a7a', minWidth: '20px' }}>#{i + 1}</span>
+              <input className="input" style={{ flex: 1, padding: '0.35rem 0.5rem', fontSize: '0.78rem' }}
+                placeholder={`Trap name...`}
+                value={trap.name}
+                onChange={e => {
+                  const updated = [...trapSlots];
+                  updated[i] = { ...updated[i], name: e.target.value };
+                  setTrapSlots(updated);
+                }}
+              />
+              <select className="input" style={{ width: '70px', padding: '0.35rem', fontSize: '0.75rem' }}
+                value={trap.class}
+                onChange={e => {
+                  const updated = [...trapSlots];
+                  updated[i] = { ...updated[i], class: e.target.value };
+                  setTrapSlots(updated);
+                }}>
+                {['E','D','C','B','A','S','SS','SSS'].map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          ))}
+          {trapsSubmitted ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', fontSize: '0.72rem', color: '#27ae60' }}>
+              <CheckCircle size={13} /> Traps submitted. Update anytime before acting.
+            </div>
+          ) : null}
+          <button className="btn btn-gold" onClick={handleSubmitTraps} disabled={submittingTraps || battle?.status !== 'active'}
+            style={{ width: '100%', justifyContent: 'center' }}>
+            <Lock size={13} />
+            {submittingTraps ? 'Submitting...' : trapsSubmitted ? 'Update Traps' : 'Submit Traps Privately'}
+          </button>
         </div>
       )}
 
