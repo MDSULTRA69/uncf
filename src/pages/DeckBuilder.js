@@ -13,7 +13,8 @@ const emptyDeck = {
   kkgCard: {},
   basicEssentials: { class: 'E', rank: 1 },
   tailedBeast: {},
-  summoningBeast: {}
+  summoningBeast: {},
+  sageMode: {}   // { type: 'heavenly'|'devil'|'', charges: 2-4 }
 };
 
 const cleanDeck = (d) => {
@@ -22,7 +23,9 @@ const cleanDeck = (d) => {
     name: String(m.name || ''),
     class: String(m.class || 'E'),
     type: String(m.type || 'ninjutsu'),
-    rank: Number(m.rank || 1)
+    rank: Number(m.rank || 1),
+    range: String(m.range || 'SR'),       // SR or LR — used by AI mod for NB4
+    armored: Boolean(m.armored || false)  // armored = true → Armor SR/LR multiplier
   }));
   cleaned.skills = (d.skills || []).map(s => ({
     name: String(s.name || ''),
@@ -37,6 +40,10 @@ const cleanDeck = (d) => {
   if (!cleaned.kkgCard?.name) cleaned.kkgCard = {};
   if (!cleaned.tailedBeast?.name) cleaned.tailedBeast = {};
   if (!cleaned.summoningBeast?.name) cleaned.summoningBeast = {};
+  // Sage Mode: persist only if a type is chosen
+  cleaned.sageMode = (d.sageMode?.type)
+    ? { type: String(d.sageMode.type), charges: Number(d.sageMode.charges || 2) }
+    : {};
   return cleaned;
 };
 
@@ -49,7 +56,7 @@ export default function DeckBuilder() {
   const totalCards = (deck.ninjutsuGenjutsu?.length || 0) + (deck.skills?.length || 0) +
     (deck.weaponBag?.length > 0 ? 1 : 0) + (deck.kkgCard?.name ? 1 : 0) +
     (deck.basicEssentials?.class ? 1 : 0) + (deck.tailedBeast?.name ? 1 : 0) +
-    (deck.summoningBeast?.name ? 1 : 0);
+    (deck.summoningBeast?.name ? 1 : 0) + (deck.sageMode?.type ? 1 : 0);
 
   const saveDeck = async () => {
     if (totalCards > 25) return toast.error('Deck exceeds 25 cards!');
@@ -103,7 +110,7 @@ export default function DeckBuilder() {
     { id: 'moves', label: 'Jutsu', count: deck.ninjutsuGenjutsu?.length || 0, max: 10 },
     { id: 'skills', label: 'Skills', count: deck.skills?.length || 0, max: 10 },
     { id: 'weapons', label: 'Weapons', count: deck.weaponBag?.length || 0, max: 12 },
-    { id: 'specials', label: 'Special', count: 0, max: 4 },
+    { id: 'specials', label: 'Special', count: [deck.kkgCard?.name, deck.tailedBeast?.name, deck.summoningBeast?.name, deck.sageMode?.type].filter(Boolean).length, max: 4 },
   ];
 
   const inputStyle = { padding: '0.4rem 0.5rem', fontSize: '0.8rem', width: '100%' };
@@ -176,7 +183,7 @@ export default function DeckBuilder() {
                   <input className="input" style={{ ...inputStyle, flex: 2 }} value={m.name} onChange={e => updateMove(i, 'name', e.target.value)} placeholder="Move name" />
                   <button onClick={() => removeMove(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e74c3c', flexShrink: 0 }}><Trash2 size={14} /></button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
                   <select className="input" style={{ ...inputStyle, flex: 1 }} value={m.class} onChange={e => updateMove(i, 'class', e.target.value)}>
                     {MOVE_CLASSES.map(c => <option key={c}>{c}</option>)}
                   </select>
@@ -187,6 +194,16 @@ export default function DeckBuilder() {
                   <select className="input" style={{ ...inputStyle, flex: 1 }} value={m.rank || 1} onChange={e => updateMove(i, 'rank', parseInt(e.target.value))}>
                     {[1,2,3,4,5].map(r => <option key={r} value={r}>Rank {r}</option>)}
                   </select>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <select className="input" style={{ ...inputStyle, flex: 1 }} value={m.range || 'SR'} onChange={e => updateMove(i, 'range', e.target.value)}>
+                    <option value="SR">Short Range (SR)</option>
+                    <option value="LR">Long Range (LR)</option>
+                  </select>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: m.armored ? '#e2b96f' : '#5a5a7a', cursor: 'pointer', flexShrink: 0, padding: '0.4rem 0.5rem', background: m.armored ? 'rgba(226,185,111,0.08)' : '#0a0a12', border: `1px solid ${m.armored ? '#e2b96f44' : '#1e1e32'}`, borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                    <input type="checkbox" checked={m.armored || false} onChange={e => updateMove(i, 'armored', e.target.checked)} style={{ accentColor: '#e2b96f' }} />
+                    Armored
+                  </label>
                 </div>
               </div>
             ))}
@@ -293,9 +310,36 @@ export default function DeckBuilder() {
           </div>
 
           {/* Summoning */}
-          <div>
+          <div style={{ marginBottom: '1rem' }}>
             <div style={{ fontSize: '0.7rem', color: '#9090a8', marginBottom: '0.4rem' }}>Summoning Beast</div>
             <input className="input" style={inputStyle} value={deck.summoningBeast?.name || ''} onChange={e => setDeck({ ...deck, summoningBeast: { ...deck.summoningBeast, name: e.target.value } })} placeholder="Summoning name" />
+          </div>
+
+          {/* Sage Mode */}
+          <div style={{ background: 'rgba(226,185,111,0.04)', border: '1px solid #2a2a3e', borderRadius: '6px', padding: '0.75rem' }}>
+            <div style={{ fontSize: '0.7rem', color: '#e2b96f', fontFamily: 'Cinzel, serif', marginBottom: '0.5rem' }}>⚡ Sage Mode</div>
+            <div style={{ fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.5rem' }}>
+              Z-class activation. Used by AI mod to apply Sage LR / Sage Prime LR damage multipliers (NB4).
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
+              <select className="input" style={{ ...inputStyle, flex: 2 }}
+                value={deck.sageMode?.type || ''}
+                onChange={e => setDeck({ ...deck, sageMode: { ...deck.sageMode, type: e.target.value } })}>
+                <option value="">— None —</option>
+                <option value="heavenly">Heavenly Sage Mode</option>
+                <option value="devil">Devil Sage Mode</option>
+              </select>
+              <select className="input" style={{ ...inputStyle, flex: 1 }}
+                value={deck.sageMode?.charges || 2}
+                onChange={e => setDeck({ ...deck, sageMode: { ...deck.sageMode, charges: parseInt(e.target.value) } })}>
+                {[2,3,4].map(n => <option key={n} value={n}>{n} charges</option>)}
+              </select>
+            </div>
+            {deck.sageMode?.type && (
+              <div style={{ fontSize: '0.65rem', color: '#27ae60' }}>
+                ✓ {deck.sageMode.type === 'heavenly' ? 'Heavenly' : 'Devil'} Sage Mode — {deck.sageMode.charges || 2} charges per match. Counts as 1 special card.
+              </div>
+            )}
           </div>
         </div>
       )}
