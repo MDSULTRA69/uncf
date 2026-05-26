@@ -50,7 +50,7 @@ export const forfeitBattle    = (id)           => api.post(`/battles/${id}/forfe
 export const submitPrivateDeck = (battleId, deck) =>
   api.post(`/battles/${battleId}/submit-deck`, { deck });
 
-// Private traps submission — hidden from opponent until triggered
+// Private trap submission — max 3, updated each turn, hidden from opponent
 export const submitPrivateTraps = (battleId, traps) =>
   api.post(`/battles/${battleId}/submit-traps`, { traps });
 
