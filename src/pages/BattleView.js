@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { getBattle, submitAction, askMod, spinWheel, forfeitBattle, submitPrivateDeck, submitPrivateTraps, getMe } from '../utils/api';
-import { Send, RefreshCw, HelpCircle, Flag, Coins, Shuffle, Lock, CheckCircle } from 'lucide-react';
+import { Send, RefreshCw, HelpCircle, Flag, Coins, Shuffle, Lock, CheckCircle, Plus, Trash2 } from 'lucide-react';
 
 const classColor = { E: '#5a5a7a', D: '#3498db', C: '#27ae60', B: '#9b59b6', A: '#e2b96f', S: '#e74c3c', SS: '#f39c12', SSS: '#ff6b6b' };
 const phaseColor = { attack: '#e74c3c', response: '#3498db', trap: '#9b59b6', counter: '#f39c12' };
@@ -25,12 +25,12 @@ export default function BattleView() {
   const [activeTab, setActiveTab] = useState('log');
   const [submittingDeck, setSubmittingDeck] = useState(false);
   const [deckSubmitted, setDeckSubmitted] = useState(false);
-  const [trapSlots, setTrapSlots] = useState([{ name: '', class: 'D' }, { name: '', class: 'D' }, { name: '', class: 'D' }]);
+  const [previewDeck, setPreviewDeck] = useState(null);
+  const [traps, setTraps] = useState([{ name: '', class: 'D' }]);
   const [submittingTraps, setSubmittingTraps] = useState(false);
-  const [trapsSubmitted, setTrapsSubmitted] = useState(false);
   const chatEndRef = useRef(null);
 
-  const fetchBattle = useCallback(async () => {
+  const fetchBattle = async () => {
     try {
       const { data } = await getBattle(id);
       setBattle(data.battle);
@@ -38,17 +38,30 @@ export default function BattleView() {
       toast.error('Battle not found');
       navigate('/battle');
     } finally { setLoading(false); }
-  }, [id, navigate]);
+  };
 
-  useEffect(() => { fetchBattle(); }, [fetchBattle]);
+  // Load deck preview on mount
+  useEffect(() => {
+    const loadDeckPreview = async () => {
+      try {
+        const { data } = await getMe();
+        if (data.user?.deck) setPreviewDeck(data.user.deck);
+      } catch {}
+    };
+    loadDeckPreview();
+  }, []);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchBattle(); }, [id]);
   useEffect(() => {
     if (activeTab === 'log') chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [battle?.chatLog, activeTab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (battle?.status !== 'active') return;
     const interval = setInterval(fetchBattle, 8000);
     return () => clearInterval(interval);
-  }, [battle?.status, fetchBattle]);
+  }, [battle?.status]);
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
   if (!battle) return null;
@@ -86,47 +99,51 @@ export default function BattleView() {
       toast.error(err.response?.data?.error || 'Failed to submit');
     } finally { setSending(false); }
   };
-const handleSubmitDeck = async () => {
-  setSubmittingDeck(true);
-  try {
-    const { data } = await getMe();
-    const freshDeck = data.user?.deck;
 
-    if (!freshDeck || (
-      !freshDeck.ninjutsuGenjutsu?.length &&
-      !freshDeck.skills?.length &&
-      !freshDeck.weaponBag?.length
-    )) {
-      toast.error('Your deck is empty. Build and save your deck first.');
-      return;
-    }
-
-    await submitPrivateDeck(id, freshDeck);
-    setDeckSubmitted(true);
-    toast.success('Deck submitted privately!');
-    fetchBattle();
-  } catch (err) {
-    toast.error(err.response?.data?.error || 'Failed to submit deck');
-  } finally {
-    setSubmittingDeck(false);
-  }
-};
+  const handleSubmitDeck = async () => {
+    setSubmittingDeck(true);
+    try {
+      const { data } = await getMe();
+      const freshDeck = data.user?.deck;
+      if (!freshDeck || (!freshDeck.ninjutsuGenjutsu?.length && !freshDeck.skills?.length && !freshDeck.weaponBag?.length)) {
+        toast.error('Your deck is empty. Build and save your deck first.');
+        setSubmittingDeck(false);
+        return;
+      }
+      setPreviewDeck(freshDeck);
+      await submitPrivateDeck(id, freshDeck);
+      setDeckSubmitted(true);
+      toast.success('Deck submitted privately!');
+      fetchBattle();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit deck');
+    } finally { setSubmittingDeck(false); }
+  };
 
   const handleSubmitTraps = async () => {
-    const filledTraps = trapSlots.filter(t => t.name.trim());
+    const validTraps = traps.filter(t => t.name.trim());
+    if (validTraps.length === 0) return toast.error('Add at least one trap');
     setSubmittingTraps(true);
     try {
-      await submitPrivateTraps(id, filledTraps);
-      setTrapsSubmitted(true);
-      toast.success(`${filledTraps.length} trap(s) submitted privately!`);
+      await submitPrivateTraps(id, validTraps);
+      toast.success(`${validTraps.length} trap(s) submitted privately!`);
       fetchBattle();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to submit traps');
-    } finally {
-      setSubmittingTraps(false);
-    }
+    } finally { setSubmittingTraps(false); }
   };
-    
+
+  const addTrap = () => {
+    if (traps.length >= 3) return toast.error('Max 3 traps');
+    setTraps([...traps, { name: '', class: 'D' }]);
+  };
+  const updateTrap = (i, field, val) => {
+    const updated = [...traps];
+    updated[i] = { ...updated[i], [field]: val };
+    setTraps(updated);
+  };
+  const removeTrap = (i) => setTraps(traps.filter((_, idx) => idx !== i));
+
   const handleAskMod = async () => {
     if (!modQuestion.trim()) return;
     try {
@@ -154,6 +171,7 @@ const handleSubmitDeck = async () => {
     } catch { toast.error('Failed to forfeit'); }
   };
 
+  // Cards from submitted deck (for selection during battle)
   const allMyCards = [
     ...(myDeck?.ninjutsuGenjutsu || []),
     ...(myDeck?.weaponBag || []),
@@ -161,6 +179,17 @@ const handleSubmitDeck = async () => {
     ...(myDeck?.kkgCard?.name ? [{ ...myDeck.kkgCard, type: 'kkg' }] : []),
     ...(myDeck?.basicEssentials?.class ? [{ name: 'Basic Essentials', ...myDeck.basicEssentials, type: 'be' }] : []),
   ];
+
+  // Cards from preview deck (to show before submission)
+  const previewCards = [
+    ...(previewDeck?.ninjutsuGenjutsu || []),
+    ...(previewDeck?.weaponBag || []),
+    ...(previewDeck?.skills || []),
+    ...(previewDeck?.kkgCard?.name ? [{ ...previewDeck.kkgCard, type: 'kkg' }] : []),
+    ...(previewDeck?.basicEssentials?.class ? [{ name: 'Basic Essentials', ...previewDeck.basicEssentials, type: 'be' }] : []),
+  ];
+
+  const inputStyle = { padding: '0.4rem 0.5rem', fontSize: '0.8rem', width: '100%' };
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -176,7 +205,7 @@ const handleSubmitDeck = async () => {
             <div style={{ fontSize: '0.6rem', color: '#5a5a7a', marginTop: '2px' }}>{battle.player1HP}/100</div>
           </div>
           <div style={{ textAlign: 'center', minWidth: '60px' }}>
-            <div style={{ fontSize: '0.65rem', fontFamily: 'Cinzel, serif', color: '#5a5a7a' }}>T{battle.currentTurn}/{battle.maxTurns}</div>
+            <div style={{ fontSize: '0.65rem', fontFamily: 'Cinzel, serif', color: '#5a5a7a' }}>T{battle.currentTurn || 1}/{battle.maxTurns}</div>
             <div style={{
               fontSize: '0.6rem', padding: '0.15rem 0.4rem', borderRadius: '3px', marginTop: '2px',
               background: `${phaseColor[battle.phase] || '#5a5a7a'}22`,
@@ -200,16 +229,16 @@ const handleSubmitDeck = async () => {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — now includes TRAPS */}
       <div style={{ display: 'flex', background: '#12121e', borderRadius: '6px', border: '1px solid #1e1e32', padding: '3px', gap: '3px' }}>
         {['log', 'deck', 'traps', 'tools'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             flex: 1, padding: '0.4rem', borderRadius: '4px', border: 'none', cursor: 'pointer',
-            fontFamily: 'Cinzel, serif', fontSize: '0.68rem', letterSpacing: '0.05em',
+            fontFamily: 'Cinzel, serif', fontSize: '0.62rem', letterSpacing: '0.04em',
             background: activeTab === tab ? 'rgba(226,185,111,0.1)' : 'transparent',
             color: activeTab === tab ? '#e2b96f' : '#5a5a7a'
           }}>
-            {tab === 'log' ? 'BATTLE LOG' : tab === 'deck' ? 'DECK' : tab === 'traps' ? 'TRAPS' : 'TOOLS'}
+            {tab === 'log' ? 'LOG' : tab === 'deck' ? 'DECK' : tab === 'traps' ? 'TRAPS' : 'TOOLS'}
           </button>
         ))}
       </div>
@@ -263,8 +292,7 @@ const handleSubmitDeck = async () => {
           <div style={{ overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '40vh' }}>
             {battle.chatLog?.map((msg, i) => (
               <div key={i}>
-                <div style={{ fontSize: '0.62rem', fontFamily: 'Cinzel, serif', marginBottom: '3px',
-                  color: msg.type === 'ai-mod' ? '#e2b96f' : '#9090a8' }}>
+                <div style={{ fontSize: '0.62rem', fontFamily: 'Cinzel, serif', marginBottom: '3px', color: msg.type === 'ai-mod' ? '#e2b96f' : '#9090a8' }}>
                   {msg.type === 'ai-mod' ? '⚖ MOD' : msg.senderName}
                   {msg.timestamp && <span style={{ color: '#3a3a5e', marginLeft: '0.4rem' }}>{new Date(msg.timestamp).toLocaleTimeString()}</span>}
                 </div>
@@ -276,8 +304,13 @@ const handleSubmitDeck = async () => {
             <div ref={chatEndRef} />
           </div>
 
-          {isParticipant && battle.status === 'active' && isMyTurn && (
+          {isParticipant && battle.status === 'active' && (
             <div style={{ padding: '0.6rem', borderTop: '1px solid #1e1e32' }}>
+              {!isMyTurn && (
+                <div style={{ fontSize: '0.65rem', color: '#5a5a7a', textAlign: 'center', marginBottom: '0.4rem', fontFamily: 'Cinzel, serif' }}>
+                  ● Waiting for opponent... (you can still type a message)
+                </div>
+              )}
               {selectedCards.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.4rem' }}>
                   {selectedCards.map((c, i) => (
@@ -292,9 +325,9 @@ const handleSubmitDeck = async () => {
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <textarea className="input" style={{ flex: 1, resize: 'none', height: '56px', fontSize: '0.82rem', fontFamily: 'Lato, sans-serif' }}
                   value={message} onChange={e => setMessage(e.target.value)}
-                  placeholder={`${battle.phase?.toUpperCase()} — describe your action...`}
+                  placeholder={isMyTurn ? `${battle.phase?.toUpperCase()} — describe your action...` : 'Waiting for your turn...'}
                   onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) sendAction(); }} />
-                <button className="btn btn-gold" onClick={sendAction} disabled={sending} style={{ alignSelf: 'stretch', padding: '0 0.75rem' }}>
+                <button className="btn btn-gold" onClick={sendAction} disabled={sending || !isMyTurn} style={{ alignSelf: 'stretch', padding: '0 0.75rem', opacity: isMyTurn ? 1 : 0.4 }}>
                   {sending ? <RefreshCw size={15} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Send size={15} />}
                 </button>
               </div>
@@ -317,13 +350,11 @@ const handleSubmitDeck = async () => {
       {activeTab === 'deck' && isParticipant && (
         <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', overflow: 'hidden' }}>
 
-          {/* Private deck submission */}
+          {/* Submission panel */}
           <div style={{ padding: '0.75rem', borderBottom: '1px solid #1e1e32', background: 'rgba(226,185,111,0.03)' }}>
             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f', marginBottom: '0.5rem' }}>
               🔒 PRIVATE DECK SUBMISSION
             </div>
-
-            {/* Submission status */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
               <div style={{ flex: 1, padding: '0.35rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Cinzel, serif', textAlign: 'center',
                 background: (myDeckSubmitted || deckSubmitted) ? 'rgba(39,174,96,0.1)' : 'rgba(90,90,122,0.1)',
@@ -342,12 +373,7 @@ const handleSubmitDeck = async () => {
             </div>
 
             {!(myDeckSubmitted || deckSubmitted) ? (
-              <button
-                className="btn btn-gold"
-                onClick={handleSubmitDeck}
-                disabled={submittingDeck}
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
+              <button className="btn btn-gold" onClick={handleSubmitDeck} disabled={submittingDeck} style={{ width: '100%', justifyContent: 'center' }}>
                 <Lock size={13} />
                 {submittingDeck ? 'Submitting...' : 'Submit My Deck Privately'}
               </button>
@@ -359,15 +385,39 @@ const handleSubmitDeck = async () => {
             )}
           </div>
 
-          {/* Card list */}
-          <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #1e1e32', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>MY CARDS</span>
-            {isMyTurn && <span style={{ fontSize: '0.65rem', color: '#27ae60' }}>● Your Turn — tap to select</span>}
+          {/* Deck Preview — shows what will be / was submitted */}
+          <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #1e1e32' }}>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.4rem' }}>
+              {(myDeckSubmitted || deckSubmitted) ? 'SUBMITTED DECK' : 'DECK TO BE SUBMITTED'}
+            </div>
+            {previewCards.length === 0 ? (
+              <div style={{ fontSize: '0.72rem', color: '#3a3a5e' }}>No deck saved. Go to Deck Builder first.</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                {previewCards.map((card, i) => (
+                  <div key={i} style={{
+                    padding: '0.2rem 0.5rem', borderRadius: '3px', fontSize: '0.65rem',
+                    background: '#0a0a12', border: '1px solid #1e1e32',
+                    display: 'flex', alignItems: 'center', gap: '0.3rem'
+                  }}>
+                    {card.class && <span style={{ color: classColor[card.class] || '#5a5a7a', fontFamily: 'Cinzel, serif', fontSize: '0.58rem' }}>[{card.class}]</span>}
+                    <span style={{ color: '#e8e0d0' }}>{card.name}</span>
+                    {card.rank > 1 && <span style={{ color: '#5a5a7a', fontSize: '0.58rem' }}>R{card.rank}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '40vh', overflowY: 'auto' }}>
+
+          {/* Card selection list (after submission) */}
+          <div style={{ padding: '0.6rem 0.75rem', borderBottom: '1px solid #1e1e32', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#e2b96f' }}>SELECT CARDS FOR TURN</span>
+            {isMyTurn && <span style={{ fontSize: '0.65rem', color: '#27ae60' }}>● Tap to select</span>}
+          </div>
+          <div style={{ padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '30vh', overflowY: 'auto' }}>
             {allMyCards.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#5a5a7a', padding: '2rem', fontSize: '0.8rem' }}>
-                No cards. Build your deck first in the Deck Builder!
+              <div style={{ textAlign: 'center', color: '#5a5a7a', padding: '1rem', fontSize: '0.8rem' }}>
+                Submit your deck to select cards during battle.
               </div>
             ) : allMyCards.map((card, i) => {
               const isSelected = selectedCards.find(c => c.name === card.name);
@@ -378,14 +428,8 @@ const handleSubmitDeck = async () => {
                   border: `1px solid ${isSelected ? '#e2b96f66' : '#1e1e32'}`,
                   display: 'flex', alignItems: 'center', gap: '0.5rem'
                 }}>
-                  {card.class && (
-                    <span style={{ fontSize: '0.6rem', fontFamily: 'Cinzel, serif', color: classColor[card.class] || '#5a5a7a', flexShrink: 0 }}>
-                      [{card.class}]
-                    </span>
-                  )}
-                  <span style={{ fontSize: '0.8rem', color: isSelected ? '#e2b96f' : '#e8e0d0', flex: 1 }}>
-                    {card.name || 'Unnamed'}
-                  </span>
+                  {card.class && <span style={{ fontSize: '0.6rem', fontFamily: 'Cinzel, serif', color: classColor[card.class] || '#5a5a7a', flexShrink: 0 }}>[{card.class}]</span>}
+                  <span style={{ fontSize: '0.8rem', color: isSelected ? '#e2b96f' : '#e8e0d0', flex: 1 }}>{card.name || 'Unnamed'}</span>
                   <span style={{ fontSize: '0.6rem', color: '#3a3a5e' }}>{card.type}</span>
                 </div>
               );
@@ -400,41 +444,42 @@ const handleSubmitDeck = async () => {
       {/* TRAPS TAB */}
       {activeTab === 'traps' && isParticipant && (
         <div style={{ background: '#12121e', border: '1px solid #1e1e32', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#9b59b6' }}>🪤 PRIVATE TRAPS (max 3)</div>
-          <div style={{ fontSize: '0.68rem', color: '#5a5a7a' }}>Submit before your first action. Opponent cannot see your traps.</div>
-          {trapSlots.map((trap, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.65rem', color: '#5a5a7a', minWidth: '20px' }}>#{i + 1}</span>
-              <input className="input" style={{ flex: 1, padding: '0.35rem 0.5rem', fontSize: '0.78rem' }}
-                placeholder={`Trap name...`}
-                value={trap.name}
-                onChange={e => {
-                  const updated = [...trapSlots];
-                  updated[i] = { ...updated[i], name: e.target.value };
-                  setTrapSlots(updated);
-                }}
-              />
-              <select className="input" style={{ width: '70px', padding: '0.35rem', fontSize: '0.75rem' }}
-                value={trap.class}
-                onChange={e => {
-                  const updated = [...trapSlots];
-                  updated[i] = { ...updated[i], class: e.target.value };
-                  setTrapSlots(updated);
-                }}>
-                {['E','D','C','B','A','S','SS','SSS'].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          ))}
-          {trapsSubmitted ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', fontSize: '0.72rem', color: '#27ae60' }}>
-              <CheckCircle size={13} /> Traps submitted. Update anytime before acting.
-            </div>
-          ) : null}
-          <button className="btn btn-gold" onClick={handleSubmitTraps} disabled={submittingTraps || battle?.status !== 'active'}
-            style={{ width: '100%', justifyContent: 'center' }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.7rem', color: '#9b59b6' }}>🪤 PRIVATE TRAPS</div>
+
+          <div style={{ background: 'rgba(155,89,182,0.05)', border: '1px solid #9b59b622', borderRadius: '5px', padding: '0.6rem', fontSize: '0.7rem', color: '#9090a8' }}>
+            Submit up to <strong style={{ color: '#9b59b6' }}>3 traps</strong> privately each turn. Opponent sees count only. Traps can only be used as <strong style={{ color: '#9b59b6' }}>2FA</strong> when you have no deck counter. Trigger in battle log: <strong style={{ color: '#e2b96f' }}>"trap: [move name]"</strong>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {traps.map((trap, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <input className="input" style={{ flex: 2, ...inputStyle }} value={trap.name}
+                  onChange={e => updateTrap(i, 'name', e.target.value)} placeholder={`Trap ${i + 1} name`} />
+                <select className="input" style={{ flex: 1, ...inputStyle }} value={trap.class}
+                  onChange={e => updateTrap(i, 'class', e.target.value)}>
+                  {['E','D','C','B','A','S','SS','SSS'].map(c => <option key={c}>{c}</option>)}
+                </select>
+                <button onClick={() => removeTrap(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e74c3c', flexShrink: 0 }}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {traps.length < 3 && (
+            <button className="btn btn-ghost btn-sm" onClick={addTrap} style={{ justifyContent: 'center' }}>
+              <Plus size={13} /> Add Trap
+            </button>
+          )}
+
+          <button className="btn btn-gold" onClick={handleSubmitTraps} disabled={submittingTraps} style={{ width: '100%', justifyContent: 'center' }}>
             <Lock size={13} />
-            {submittingTraps ? 'Submitting...' : trapsSubmitted ? 'Update Traps' : 'Submit Traps Privately'}
+            {submittingTraps ? 'Submitting...' : 'Submit Traps Privately'}
           </button>
+
+          <div style={{ fontSize: '0.65rem', color: '#5a5a7a', textAlign: 'center' }}>
+            Update traps at the start of every turn before acting.
+          </div>
         </div>
       )}
 
@@ -445,7 +490,7 @@ const handleSubmitDeck = async () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {[
               { type: 'compatibility', label: 'Compatibility Test', icon: Coins, desc: 'Coin toss for move compat' },
-              { type: 'momentum', label: 'Momentum Dice', icon: Shuffle, desc: 'Roll every 3 turns' },
+              { type: 'momentum', label: 'Momentum Dice', icon: Shuffle, desc: 'Set at start + turn 6' },
               { type: 'stalemate', label: 'Stalemate Numbers', icon: Shuffle, desc: 'Equal jutsu clash' },
               { type: 'speedGame', label: 'Speed Game', icon: Shuffle, desc: 'Attack-counter clash' },
             ].map(({ type, label, icon: Icon, desc }) => (
@@ -473,15 +518,13 @@ const handleSubmitDeck = async () => {
             <div style={{ fontSize: '0.65rem', color: '#5a5a7a', fontFamily: 'Cinzel, serif', marginBottom: '0.3rem' }}>ACTIVE TRAPS</div>
             {battle.activeTraps?.length > 0
               ? battle.activeTraps.map((t, i) => <div key={i} style={{ fontSize: '0.72rem', color: '#9b59b6' }}>⚠ {t.trapName}</div>)
-              : <div style={{ fontSize: '0.7rem', color: '#3a3a5e' }}>None</div>
-            }
+              : <div style={{ fontSize: '0.7rem', color: '#3a3a5e' }}>None</div>}
           </div>
           <div>
             <div style={{ fontSize: '0.65rem', color: '#5a5a7a', fontFamily: 'Cinzel, serif', marginBottom: '0.3rem' }}>COOLDOWNS</div>
             {battle.activeCooldowns?.length > 0
               ? battle.activeCooldowns.map((c, i) => <div key={i} style={{ fontSize: '0.7rem', color: '#e74c3c' }}>🕐 {c.moveName} until T{c.resumesOnTurn}</div>)
-              : <div style={{ fontSize: '0.7rem', color: '#3a3a5e' }}>None</div>
-            }
+              : <div style={{ fontSize: '0.7rem', color: '#3a3a5e' }}>None</div>}
           </div>
         </div>
       )}

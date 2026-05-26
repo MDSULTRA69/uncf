@@ -59,8 +59,8 @@ export default function DeckBuilder() {
       await updateDeck(cleaned);
       updateUser({ deck: cleaned });
       toast.success('Deck saved!');
-    } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Failed to save deck');
+    } catch {
+      toast.error('Failed to save deck');
     } finally { setLoading(false); }
   };
 
