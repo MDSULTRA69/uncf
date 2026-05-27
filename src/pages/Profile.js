@@ -17,7 +17,7 @@ export default function Profile() {
   const [editingMoves, setEditingMoves] = useState(false);
   const [compatMoves, setCompatMoves] = useState(user?.compatibleMoves || []);
   const [compatElements, setCompatElements] = useState(user?.elements?.compatible || []);
-  const [incompatElements, setIncompatElements] = useState(user?.elements?.incompatible || []);
+  const [incompatElements] = useState(
   const [newMove, setNewMove] = useState({ name: '', class: 'E', type: 'ninjutsu', description: '' });
 
   const saveProfile = async () => {
