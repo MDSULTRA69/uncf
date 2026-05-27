@@ -190,7 +190,18 @@ function parsePastedDeck(text) {
 
 export default function DeckBuilder() {
   const { user, updateUser } = useAuth();
-  const [deck, setDeck] = useState(user?.deck || emptyDeck);
+  const backfillDeck = (d) => {
+    if (!d) return emptyDeck;
+    return {
+      ...emptyDeck,
+      ...d,
+      ninjutsuGenjutsu: (d.ninjutsuGenjutsu || []).map(m => ({
+        range: 'SR', armored: false, ...m
+      })),
+      sageMode: d.sageMode && typeof d.sageMode === 'object' ? d.sageMode : {},
+    };
+  };
+  const [deck, setDeck] = useState(backfillDeck(user?.deck));
   const [activeTab, setActiveTab] = useState('moves');
   const [loading, setLoading] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -241,7 +252,7 @@ export default function DeckBuilder() {
 
   const addMove = () => {
     if (deck.ninjutsuGenjutsu.length >= 10) return toast.error('Max 10 Ninjutsu/Genjutsu slots');
-    setDeck({ ...deck, ninjutsuGenjutsu: [...deck.ninjutsuGenjutsu, { name: '', class: 'E', type: 'ninjutsu', rank: 1 }] });
+    setDeck({ ...deck, ninjutsuGenjutsu: [...deck.ninjutsuGenjutsu, { name: '', class: 'E', type: 'ninjutsu', rank: 1, range: 'SR', armored: false }] });
   };
   const updateMove = (i, field, val) => {
     const updated = [...deck.ninjutsuGenjutsu];
@@ -299,6 +310,9 @@ export default function DeckBuilder() {
           }}>
             {totalCards}/25
           </div>
+          <button onClick={() => { setPasteOpen(p => !p); setPasteWarnings([]); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.7rem', background: 'transparent', color: '#e2b96f', border: '1px solid #e2b96f55', borderRadius: '6px', fontSize: '0.7rem', fontFamily: 'Cinzel, serif', cursor: 'pointer' }}>
+            <ClipboardPaste size={13} /> Paste
+          </button>
           <button className="btn btn-gold" onClick={saveDeck} disabled={loading} style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
             <Save size={14} /> {loading ? '...' : 'Save'}
           </button>
@@ -312,6 +326,59 @@ export default function DeckBuilder() {
           Build and save your deck here. When a battle starts, go to the <strong style={{ color: '#e2b96f' }}>DECK tab</strong> inside the battle room and tap <strong style={{ color: '#e2b96f' }}>Submit Private Deck</strong>. Your opponent will never see your cards — only the AI MOD uses them to validate your moves.
         </div>
       </div>
+
+      {/* Paste Import Panel */}
+      {pasteOpen && (
+        <div style={{ background: '#0d0d1a', border: '1px solid #e2b96f44', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.75rem', color: '#e2b96f', fontFamily: 'Cinzel, serif' }}>📋 Paste Your Deck</span>
+            <button onClick={() => setPasteOpen(false)} style={{ background: 'none', border: 'none', color: '#5a5a7a', cursor: 'pointer', padding: 0 }}><X size={14} /></button>
+          </div>
+          <div style={{ fontSize: '0.65rem', color: '#5a5a7a', marginBottom: '0.5rem', lineHeight: 1.6 }}>
+            One card per line: <span style={{ color: '#9090a8' }}>Name | Class | SR or LR | Rank | armored</span><br/>
+            Use section headers: <span style={{ color: '#9090a8' }}>[Jutsu] [Skills] [Weapons] [Specials]</span><br/>
+            Specials: <span style={{ color: '#9090a8' }}>KKG: Sharingan · Tailed Beast: Nine Tails · Sage Mode: Heavenly | 2 charges</span>
+          </div>
+          <details style={{ marginBottom: '0.5rem' }}>
+            <summary style={{ fontSize: '0.65rem', color: '#9090a8', cursor: 'pointer' }}>Show example</summary>
+            <pre style={{ fontSize: '0.6rem', color: '#5a5a7a', background: '#07070f', padding: '0.5rem', borderRadius: '4px', marginTop: '0.3rem', overflowX: 'auto', lineHeight: 1.7 }}>{`[Jutsu]
+Chidori | A | LR | rank 2 | armored
+Rasengan | A | SR | rank 3
+Fireball Jutsu | S | LR | rank 1
+
+[Skills]
+Sensor Type | pure
+Speed Clone | bonus
+
+[Weapons]
+Kunai | B
+
+[Specials]
+KKG: Sharingan
+Tailed Beast: Nine Tails
+Sage Mode: Heavenly | 2 charges`}</pre>
+          </details>
+          <textarea
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+            placeholder="Paste your deck list here..."
+            style={{ width: '100%', minHeight: '130px', background: '#07070f', border: '1px solid #1e1e32', borderRadius: '6px', color: '#e0e0f0', fontSize: '0.72rem', padding: '0.6rem', fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
+          />
+          {pasteWarnings.length > 0 && (
+            <div style={{ marginTop: '0.4rem', fontSize: '0.65rem', color: '#e2b96f' }}>
+              {pasteWarnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button onClick={handlePasteImport} style={{ flex: 1, padding: '0.45rem', background: '#e2b96f', color: '#0a0a12', border: 'none', borderRadius: '6px', fontFamily: 'Cinzel, serif', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+              <ClipboardPaste size={12} /> Import
+            </button>
+            <button onClick={() => { setPasteText(''); setPasteWarnings([]); }} style={{ padding: '0.45rem 0.8rem', background: 'transparent', color: '#5a5a7a', border: '1px solid #1e1e32', borderRadius: '6px', fontSize: '0.72rem', cursor: 'pointer' }}>
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #1e1e32', marginBottom: '1rem', overflowX: 'auto' }}>
