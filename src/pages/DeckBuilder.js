@@ -114,8 +114,7 @@ function parsePastedDeck(text) {
     // Skip empty or comment lines
     if (!line || line.startsWith('//') || line.startsWith('#')) continue;
 
-    const lower = line.toLowerCase().replace(/[:\[\]]/g, '').trim();
-
+    const lower = line.toLowerCase().replace(/[:[\]]/g, '').trim();
     // Section header detection
     if (/^jutsu|^ninjutsu|^genjutsu|^moves?/.test(lower)) { section = 'jutsu'; continue; }
     if (/^skills?/.test(lower)) { section = 'skills'; continue; }
