@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -30,7 +30,7 @@ export default function BattleView() {
   const [submittingTraps, setSubmittingTraps] = useState(false);
   const chatEndRef = useRef(null);
 
-  const fetchBattle = async () => {
+  const fetchBattle = useCallback(async () => {
     try {
       const { data } = await getBattle(id);
       setBattle(data.battle);
@@ -38,7 +38,7 @@ export default function BattleView() {
       toast.error('Battle not found');
       navigate('/battle');
     } finally { setLoading(false); }
-  };
+  }, [id, navigate]);
 
   // Load deck preview on mount
   useEffect(() => {
