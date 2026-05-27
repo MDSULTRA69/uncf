@@ -167,15 +167,15 @@ function parsePastedDeck(text) {
 
     if (section === 'jutsu') {
       if (result.ninjutsuGenjutsu.length >= 10) {
-        warnings.push(\`Skipped "\${name}" — max 10 jutsu\`);
+        warnings.push(`Skipped "${name}" — max 10 jutsu`);
         continue;
       }
       result.ninjutsuGenjutsu.push({ name, class: cls, type, rank, range, armored });
     } else if (section === 'skills') {
-      if (result.skills.length >= 10) { warnings.push(\`Skipped "\${name}" — max 10 skills\`); continue; }
+      if (result.skills.length >= 10) { warnings.push(`Skipped "${name}" — max 10 skills`); continue; }
       result.skills.push({ name, type: skillType, description: '' });
     } else if (section === 'weapons') {
-      if (result.weaponBag.length >= 12) { warnings.push(\`Skipped "\${name}" — max 12 weapons\`); continue; }
+      if (result.weaponBag.length >= 12) { warnings.push(`Skipped "${name}" — max 12 weapons`); continue; }
       result.weaponBag.push({ name, class: cls, type: 'weapon' });
     } else if (section === 'specials') {
       // In specials section, try to detect KKG / tailed beast / summoning by name hints
