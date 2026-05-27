@@ -5,8 +5,7 @@ import {
   getAdminDashboard, getAdminPlayers, adminUpdatePlayer,
   createMove, createClan, createRule, createGem, createVillage
 } from '../utils/api';
-import { Users, Swords, BookOpen, Gem, Map, LayoutDashboard, Plus, Save, Edit2, Shield } from 'lucide-react';
-
+import { Users, Swords, BookOpen, Gem, Map, LayoutDashboard, Save, Edit2, Shield } from 'lucide-react';
 const MOVE_CLASSES = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
 const RANKS = ['Rookie', 'Genin', 'Chunin', 'Jounin', 'Kage', 'Sage', 'God'];
 
