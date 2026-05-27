@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { updateDeck } from '../utils/api';
-import { Save, Plus, Trash2, Info, ClipboardPaste, X, ChevronDown, ChevronUp } from 'lucide-react';
-
+import { Save, Plus, Trash2, Info, ClipboardPaste, X } from 'lucide-react';
 const MOVE_CLASSES = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
 
 const emptyDeck = {
@@ -79,7 +78,6 @@ const cleanDeck = (d) => {
 //   Or just: Jutsu:, Skills:, Weapons:
 
 const CLASSES = new Set(['E','D','C','B','A','S','SS','SSS']);
-const RANGES = new Set(['SR','LR','SHORT','LONG','SHORT RANGE','LONG RANGE']);
 const SKILL_TYPES = new Set(['PURE','PURE-MECH','MECH','MECHANICAL','BONUS','SPECIAL']);
 
 function inferTokens(tokens) {
@@ -89,8 +87,8 @@ function inferTokens(tokens) {
     const t = raw.trim().toUpperCase();
     const tClean = raw.trim().toLowerCase();
     if (CLASSES.has(t)) { cls = t === 'SS' ? 'SS' : t === 'SSS' ? 'SSS' : t; continue; }
-    if (t === 'LR' || t === 'LONG' || t === 'LONG RANGE') { range = 'LR'; continue; }
-    if (t === 'SR' || t === 'SHORT' || t === 'SHORT RANGE') { range = 'SR'; continue; }
+    if (t === 'LR' || t === 'LONG' || t.startsWith('LONG')) { range = 'LR'; continue; }
+    if (t === 'SR' || t === 'SHORT' || t.startsWith('SHORT')) { range = 'SR'; continue; }
     if (tClean === 'armored' || tClean === 'armor') { armored = true; continue; }
     if (tClean === 'genjutsu' || tClean === 'gen') { type = 'genjutsu'; continue; }
     if (tClean === 'ninjutsu' || tClean === 'nin') { type = 'ninjutsu'; continue; }
