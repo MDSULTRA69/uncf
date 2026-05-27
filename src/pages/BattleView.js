@@ -61,7 +61,7 @@ export default function BattleView() {
     if (battle?.status !== 'active') return;
     const interval = setInterval(fetchBattle, 8000);
     return () => clearInterval(interval);
-  }, [battle?.status]);
+  }, [fetchBattle]);
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
   if (!battle) return null;
