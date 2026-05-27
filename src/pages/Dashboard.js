@@ -10,7 +10,7 @@ const nextRank = { Rookie: 'Genin', Genin: 'Chunin', Chunin: 'Jounin', Jounin: '
 export default function Dashboard() {
   const { user } = useAuth();
   const [myBattles, setMyBattles] = useState([]);
-  const [activeBattles, setActiveBattles] = useState([]);
+  const [, setActiveBattles] =
 
   useEffect(() => {
     getMyBattles().then(r => setMyBattles(r.data.battles || [])).catch(() => {});
